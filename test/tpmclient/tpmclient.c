@@ -29,26 +29,15 @@
 // tpmclient.cpp : Defines the entry point for the console test application.
 //
 
-#ifdef _WIN32
-#include "stdafx.h"
-#else
 #include <stdarg.h>
-#endif
+#include <stdbool.h>
 
 #ifndef UNICODE
 #define UNICODE 1
 #endif
 
-#ifdef _WIN32
-// link with Ws2_32.lib
-#pragma comment(lib,"Ws2_32.lib")
-
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
 #define sprintf_s   snprintf
 #define sscanf_s    sscanf
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>   // Needed for _wtoi
@@ -196,9 +185,11 @@ void copyData( UINT8 *to, UINT8 *from, UINT32 length )
 
 TPM_RC CompareTPM2B( TPM2B *buffer1, TPM2B *buffer2 )
 {
+    int i;
+
     if( buffer1->size != buffer2->size )
         return TPM_RC_FAILURE;
-    for( int i = 0; i < buffer1->size; i++ )
+    for( i = 0; i < buffer1->size; i++ )
     {
         if( buffer1->buffer[0] != buffer2->buffer[0] )
             return TPM_RC_FAILURE;
@@ -299,9 +290,6 @@ void Cleanup()
         TeardownTctiContext( &resMgrTctiContext );
     }
 
-#ifdef _WIN32
-    WSACleanup();
-#endif
     exit(1);
 }
 
@@ -7081,7 +7069,8 @@ void TestCreate1()
     rval = Tss2_Sys_RSA_Encrypt(sysContext, keyHandle, 0, &message, &inScheme, &outsideInfo, &outData, &sessionsDataOut);
     CheckPassed( rval );
 
-    for (int i=0; i<message.t.size; i++)
+    int i;
+    for (i=0; i<message.t.size; i++)
     	printf("\nlabel size:%d, label buffer:%x, outData size:%d, outData buffer:%x, msg size:%d, msg buffer:%x", outsideInfo.t.size, outsideInfo.t.buffer[i], outData.t.size, outData.t.buffer[i], message.t.size, message.t.buffer[i]);
     CheckPassed(rval);
 }
@@ -7166,10 +7155,7 @@ void TpmTest()
 
     GetSetDecryptParamTests();
 
-#ifdef _WIN32
-    // This test can only be run agains the simulator
     RmZeroSizedResponseTest();
-#endif
 
     TestTpmStartup();
 
@@ -7378,7 +7364,7 @@ int main(int argc, char* argv[])
             }
         }
     }
-#if __linux || __unix
+#if defined(__linux__) || defined(__unix__)
     if( testLocalTcti )
     {
         TestLocalTCTI();
@@ -7389,9 +7375,6 @@ int main(int argc, char* argv[])
     if( rval != TSS2_RC_SUCCESS )
     {
         DebugPrintf( NO_PREFIX, "Resource Mgr, %s, failed initialization: 0x%x.  Exiting...\n", resMgrInterfaceName, rval );
-#ifdef _WIN32
-        WSACleanup();
-#endif
         if( resMgrTctiContext != 0 )
             free( resMgrTctiContext );
 
