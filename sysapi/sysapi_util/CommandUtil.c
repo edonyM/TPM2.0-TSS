@@ -92,9 +92,16 @@ UINT32 GetCommandSize( TSS2_SYS_CONTEXT *sysContext )
 
 void CopyCommandHeader( _TSS2_SYS_CONTEXT_BLOB *sysContext, TPM_CC commandCode )
 {
-   SYS_CONTEXT->rval = TSS2_RC_SUCCESS;
+    TPM_ST st_no_sessions = TPM_ST_NO_SESSIONS;
 
-  ((TPM20_Header_In *) sysContext->tpmInBuffPtr)->tag = CHANGE_ENDIAN_WORD( TPM_ST_NO_SESSIONS );
+   SYS_CONTEXT->rval = TSS2_RC_SUCCESS;
+    SYS_CONTEXT->nextData = SYS_CONTEXT->tpmInBuffPtr;
+
+    Marshal_TPM_ST (SYS_CONTEXT->tpmInBuffPtr,
+                    SYS_CONTEXT->maxCommandSize,
+                    &(SYS_CONTEXT->nextData),
+                    st_no_sessions,
+                    &(SYS_CONTEXT->rval));
 
   ((TPM20_Header_In *) sysContext->tpmInBuffPtr)->commandCode = CHANGE_ENDIAN_DWORD( commandCode );
 
@@ -200,10 +207,17 @@ TSS2_RC CommonComplete( TSS2_SYS_CONTEXT *sysContext )
     }
     else
     {
+        TPM_ST tag;
         SYS_CONTEXT->nextData = (UINT8 *)( SYS_CONTEXT->rspParamsSize );
 
         // Save response params size if command has authorization area.
-        if( CHANGE_ENDIAN_WORD( ( (TPM20_Header_Out *)( SYS_CONTEXT->tpmOutBuffPtr )  )->tag ) == TPM_ST_SESSIONS )
+        UINT8 *tmp_ptr = SYS_CONTEXT->tpmOutBuffPtr;
+        Unmarshal_TPM_ST (SYS_CONTEXT->tpmOutBuffPtr,
+                          SYS_CONTEXT->maxResponseSize,
+                          &tmp_ptr,
+                          &tag,
+                          &(SYS_CONTEXT->rval));
+        if( tag == TPM_ST_SESSIONS )
         {
             Unmarshal_UINT32( SYS_CONTEXT->tpmOutBuffPtr, SYS_CONTEXT->maxResponseSize, &( SYS_CONTEXT->nextData ),
                     &( SYS_CONTEXT->rpBufferUsedSize ), &(SYS_CONTEXT->rval ) );
@@ -227,7 +241,6 @@ TSS2_RC CommonOneCall(
     TSS2_SYS_RSP_AUTHS *rspAuthsArray
     )
 {
-    TSS2_RC     rval = TSS2_RC_SUCCESS;
     UINT32      responseSize;
 
     if( SYS_CONTEXT->rval != TSS2_RC_SUCCESS )
@@ -238,7 +251,7 @@ TSS2_RC CommonOneCall(
         SYS_CONTEXT->rval = Tss2_Sys_SetCmdAuths( sysContext, cmdAuthsArray );
     }
 
-    if( rval == TSS2_RC_SUCCESS )
+    if( SYS_CONTEXT->rval == TSS2_RC_SUCCESS )
     {
         SYS_CONTEXT->rval = FinishCommand( SYS_CONTEXT, cmdAuthsArray, &responseSize );
 

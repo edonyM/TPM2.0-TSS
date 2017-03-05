@@ -1,0 +1,31 @@
+{
+    global:
+        # convenience functions to convert endianness
+        endian_conv_8;
+        endian_conv_16;
+        endian_conv_32;
+        endian_conv_64;
+        # marshalling functions for TPM2 types
+        BYTE_Marshal;
+        BYTE_Unmarshal;
+        INT8_Marshal;
+        INT8_Unmarshal;
+        INT16_Marshal;
+        INT16_Unmarshal;
+        INT32_Marshal;
+        INT32_Unmarshal;
+        INT64_Marshal;
+        INT64_Unmarshal;
+        UINT8_Marshal;
+        UINT8_Unmarshal;
+        UINT16_Marshal;
+        UINT16_Unmarshal;
+        UINT32_Marshal;
+        UINT32_Unmarshal;
+        UINT64_Marshal;
+        UINT64_Unmarshal;
+        TPM_ST_Marshal;
+        TPM_ST_Unmarshal;
+    local:
+        *;
+};

@@ -28,23 +28,96 @@
 #ifndef TSS2_SYS_API_MARSHAL_UNMARSHAL_H
 #define TSS2_SYS_API_MARSHAL_UNMARSHAL_H
 
+#include "sapi/marshal.h"
+
+/*
+ * The MARSHAL_ADAPTER macro generates code that adapts the old Marshal_* API
+ * to the new libmarshal replacements.
+ */
+#define MARSHAL_ADAPTER(type, inBuffPtr, maxCommandSize, nextData, src, rval) \
+    do { \
+        if (*rval != TSS2_RC_SUCCESS) { \
+            break;\
+        } \
+        size_t index = *nextData - inBuffPtr; \
+        type floop = src; \
+        *rval = type##_Marshal (&floop, \
+                                inBuffPtr, \
+                                maxCommandSize, \
+                                &index); \
+        *nextData = inBuffPtr + index; \
+    } while (0)
+/*
+ * The UNMARSHAL_ADAPTER macro generates code that adapts the old Unmarshal_*
+ * API to the new libmarshal replacements.
+ */
+#define UNMARSHAL_ADAPTER(type, outBuffPtr, maxResponseSize, nextData, dest, rval) \
+    do { \
+        if (*rval != TSS2_RC_SUCCESS) \
+            break; \
+        size_t index = *nextData - outBuffPtr; \
+        *rval = type##_Unmarshal (outBuffPtr, \
+                                  maxResponseSize, \
+                                  &index, \
+                                  dest); \
+        *nextData = outBuffPtr + index; \
+    } while (0)
 void Marshal_Simple_TPM2B( UINT8 *inBuffPtr, UINT32 maxCommandSize, UINT8 **nextData, TPM2B *value, TSS2_RC *rval );
 void Unmarshal_Simple_TPM2B( UINT8 *outBuffPtr, UINT32 maxResponseSize, UINT8 **nextData, TPM2B *value, TSS2_RC *rval );
 void Unmarshal_Simple_TPM2B_NoSizeCheck( UINT8 *outBuffPtr, UINT32 maxResponseSize, UINT8 **nextData, TPM2B *value, TSS2_RC *rval );
-void Marshal_UINT64( UINT8 *inBuffPtr, UINT32 maxCommandSize, UINT8 **nextData, UINT64 value, TSS2_RC *rval );
-void Marshal_UINT32( UINT8 *inBuffPtr, UINT32 maxCommandSize, UINT8 **nextData, UINT32 value, TSS2_RC *rval );
-void Marshal_UINT16( UINT8 *inBuffPtr, UINT32 maxCommandSize, UINT8 **nextData, UINT16 value, TSS2_RC *rval );
-void Marshal_UINT8( UINT8 *inBuffPtr, UINT32 maxCommandSize, UINT8 **nextData, UINT8 value, TSS2_RC *rval );
-void Unmarshal_UINT64( UINT8 *outBuffPtr, UINT32 maxResponseSize, UINT8 **nextData, UINT64 *value, TSS2_RC *rval );
-void Unmarshal_UINT32( UINT8 *outBuffPtr, UINT32 maxResponseSize, UINT8 **nextData, UINT32 *value, TSS2_RC *rval );
-void Unmarshal_UINT16( UINT8 *outBuffPtr, UINT32 maxResponseSize, UINT8 **nextData, UINT16 *value, TSS2_RC *rval );
-void Unmarshal_UINT8( UINT8 *outBuffPtr, UINT32 maxResponseSize, UINT8 **nextData, UINT8 *value, TSS2_RC *rval );
+/*
+ * These macros expand to adapter macros. They're meant to be a layer
+ * adapting the existing Marshal_* API to the new stuff going into
+ * libmarshal. The type being marshalled is the first parameter to the
+ * MARSHAL_ADAPTER macro.
+ * - inBuffPtr (UINT8*): Pointer to the beginning of the buffer where the
+ *     response buffer resides.
+ * - maxCommandSize (size_t): the size of the memory region pointed to by
+ *     inBuffPtr.
+ * - nextData (UINT8**): Pointer to the location in buffer referenced by
+ *     inBuffPtr where then next value will be marshalled to.
+ * - src (type): The instance of the type being marshalled.
+ * - rval (TSS2_RC*): Pointer to TSS2_RC instace where the response code
+ *     is stored.
+ */
+#define Marshal_TPM_ST(inBuffPtr, maxCommandSize, nextData, src, rval) \
+    MARSHAL_ADAPTER(TPM_ST, inBuffPtr, maxCommandSize, nextData, src, rval)
+#define Marshal_UINT64(inBuffPtr, maxCommandSize, nextData, src, rval) \
+    MARSHAL_ADAPTER(UINT64, inBuffPtr, maxCommandSize, nextData, src, rval)
+#define Marshal_UINT32(inBuffPtr, maxCommandSize, nextData, src, rval) \
+    MARSHAL_ADAPTER(UINT32, inBuffPtr, maxCommandSize, nextData, src, rval)
+#define Marshal_UINT16(inBuffPtr, maxCommandSize, nextData, src, rval) \
+    MARSHAL_ADAPTER(UINT16, inBuffPtr, maxCommandSize, nextData, src, rval)
+#define Marshal_UINT8(inBuffPtr, maxCommandSize, nextData, src, rval) \
+    MARSHAL_ADAPTER(UINT8, inBuffPtr, maxCommandSize, nextData, src, rval)
+/*
+ * These macros expand to adapter macros. They're meant to be a layer
+ * adapting the existing Unmarshal_* API to the new stuff going into
+ * libmarshal. The type being unmarshalled is the first parameter to the
+ * UNMARSHAL_ADAPTER macro.
+ * - outBuffPtr (UINT8*): Pointer to the beginning of the buffer where the
+ *     response buffer resides.
+ * - maxResponseSize (size_t): the size of the memory region pointed to by
+ *     outBuffPtr.
+ * - nextData (UINT8**): Pointer to the location in buffer referenced by
+ *     outBuffPtr where then next value will be unmarshalled from.
+ * - dest (type*): Pointer to an instance of the type being unmarshalled
+ *     where the unmarshalled data will be stored.
+ * - rval (TSS2_RC*): Pointer to TSS2_RC instace where the response code
+ *     is stored
+ */
+#define Unmarshal_TPM_ST(outBuffPtr, maxResponseSize, nextData, dest, rval) \
+    UNMARSHAL_ADAPTER(TPM_ST, outBuffPtr, maxResponseSize, nextData, dest, rval)
+#define Unmarshal_UINT64(outBuffPtr, maxResponseSize, nextData, dest, rval) \
+    UNMARSHAL_ADAPTER(UINT64, outBuffPtr, maxResponseSize, nextData, dest, rval)
+#define Unmarshal_UINT32(outBuffPtr, maxResponseSize, nextData, dest, rval) \
+    UNMARSHAL_ADAPTER(UINT32, outBuffPtr, maxResponseSize, nextData, dest, rval)
+#define Unmarshal_UINT16(outBuffPtr, maxResponseSize, nextData, dest, rval) \
+    UNMARSHAL_ADAPTER(UINT16, outBuffPtr, maxResponseSize, nextData, dest, rval)
+#define Unmarshal_UINT8(outBuffPtr, maxResponseSize, nextData, dest, rval) \
+    UNMARSHAL_ADAPTER(UINT8, outBuffPtr, maxResponseSize, nextData, dest, rval)
 void Marshal_TPMS_EMPTY( TSS2_SYS_CONTEXT *sysContext, TPMS_EMPTY *empty );
 void Unmarshal_TPMS_EMPTY( TSS2_SYS_CONTEXT *sysContext, TPMS_EMPTY *empty );
-
-TSS2_RC CheckOverflow( UINT8 *buffer, UINT32 bufferSize, UINT8 *nextData, UINT32 size );
-TSS2_RC CheckDataPointers( UINT8 *buffer, UINT8 **nextData );
-
 
 // Macro for unmarshalling/marshalling in SYSAPI code.  We needed access to generic base functions in resource manager and
 // other places
