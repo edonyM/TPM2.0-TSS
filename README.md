@@ -1,5 +1,6 @@
-upstream CI: [![Build Status](https://travis-ci.org/01org/TPM2.0-TSS.svg?branch=master)](https://travis-ci.org/01org/TPM2.0-TSS)
-edonyM CI: [![Build Status](https://travis-ci.org/edonyM/TPM2.0-TSS.svg?branch=master)](https://travis-ci.org/edonyM/TPM2.0-TSS)
+**Intel CI:** [![Build Status](https://travis-ci.org/01org/TPM2.0-TSS.svg?branch=master)](https://travis-ci.org/01org/TPM2.0-TSS)
+
+**edonyM CI:** [![Build Status](https://travis-ci.org/edonyM/TPM2.0-TSS.svg?branch=master)](https://travis-ci.org/edonyM/TPM2.0-TSS)
 
 # WARNING: Resource Manager Deprecated
 The current resource manager implementation in [$(srcdir)/resourcemgr/resourcemgr.c](https://github.com/01org/TPM2.0-TSS/blob/master/resourcemgr/resourcemgr.c) should be considered a prototype only.
