@@ -24,49 +24,19 @@ AS_IF([test "x$enable_unit" != xno],
                                     [1])])])
 AM_CONDITIONAL([UNIT], [test "x$enable_unit" != xno])
 
-dnl add_cflag:
-dnl   A macro to add a CFLAG to the EXTRA_CFLAGS variable. This macro will
-dnl   check to be sure the compiler supprts the flag. Flags can be made
-dnl   mandatory (configure will fail).
-dnl $1: C compiler flag to add to EXTRA_CFLAGS.
-dnl $2: Set to "required" to cause configure failure if flag not supported..
-AC_DEFUN([add_cflag],[
-    AX_CHECK_COMPILE_FLAG([$1],[
-        EXTRA_CFLAGS="$EXTRA_CFLAGS $1"],[
-        AS_IF([test x$2 != xrequired],[
-            AC_MSG_WARN([Optional CFLAG "$1" not supported by your compiler, continuing.])],[
-            AC_MSG_ERROR([Required CFLAG "$1" not supported by your compiler, aborting.])]
-        )]
-    )]
-)
-dnl add_ldlag:
-dnl   A macro to add a LDLAG to the EXTRA_LDFLAGS variable. This macro will
-dnl   check to be sure the linker supprts the flag. Flags can be made
-dnl   mandatory (configure will fail).
-dnl $1: linker flag to add to EXTRA_LDFLAGS.
-dnl $2: Set to "required" to cause configure failure if flag not supported.
-AC_DEFUN([add_ldflag],[
-    AX_CHECK_LINK_FLAG([$1],[
-        EXTRA_CFLAGS="$EXTRA_LDFLAGS $1"],[
-        AS_IF([test x$2 != xrequired],[
-            AC_MSG_WARN([Optional LDFLAG "$1" not supported by your linker, continuing.])],[
-            AC_MSG_ERROR([Required LDFLAG "$1" not supported by your linker, aborting.])]
-        )]
-    )]
-)
-
-add_cflag([-Wall])
-add_cflag([-Werror])
-add_cflag([-std=gnu99])
-add_cflag([-Wformat])
-add_cflag([-Wformat-security])
-add_cflag([-Wstack-protector])
-add_cflag([-fstack-protector-all])
-add_cflag([-fpic])
-add_cflag([-fPIC])
-add_ldflag([-Wl,--no-undefined])
-
-AC_SUBST([EXTRA_CFLAGS])
-AC_SUBST([EXTRA_LDFLAGS])
+AX_ADD_COMPILER_FLAG([-Wall])
+AX_ADD_COMPILER_FLAG([-Werror])
+AX_ADD_COMPILER_FLAG([-std=gnu99])
+AX_ADD_COMPILER_FLAG([-Wformat])
+AX_ADD_COMPILER_FLAG([-Wformat-security])
+AX_ADD_COMPILER_FLAG([-fstack-protector-all])
+AX_ADD_COMPILER_FLAG([-fpic])
+AX_ADD_COMPILER_FLAG([-fPIC])
+AX_ADD_PREPROC_FLAG([-D_FORTIFY_SOURCE=2])
+AX_ADD_PREPROC_FLAG([-U_FORTIFY_SOURCE])
+AX_ADD_LINK_FLAG([-Wl,--no-undefined])
+AX_ADD_LINK_FLAG([-Wl,-z,noexecstack])
+AX_ADD_LINK_FLAG([-Wl,-z,now])
+AX_ADD_LINK_FLAG([-Wl,-z,relro])
 
 AC_OUTPUT
