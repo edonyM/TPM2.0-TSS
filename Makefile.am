@@ -59,7 +59,8 @@ TESTS_INTEGRATION = \
     test/integration/get-random \
     test/integration/self-test \
     test/integration/pcr-extension \
-    test/integration/asymmetric-encrypt-decrypt
+    test/integration/asymmetric-encrypt-decrypt \
+    test/integration/start-auth-session
 
 TESTS = $(check_PROGRAMS)
 CLEANFILES = $(nodist_pkgconfig_DATA)
@@ -81,8 +82,10 @@ nodist_pkgconfig_DATA = lib/sapi.pc lib/tcti-device.pc lib/tcti-socket.pc
 
 if UNIT
 test_unit_tcti_device_CFLAGS  = $(CMOCKA_CFLAGS) $(AM_CFLAGS)
-test_unit_tcti_device_LDADD   = $(libsapi) $(libtcti_device) $(CMOCKA_LIBS)
-test_unit_tcti_device_SOURCES = test/unit/tcti-device.c
+test_unit_tcti_device_LDADD   = $(CMOCKA_LIBS) $(libmarshal)
+test_unit_tcti_device_LDFLAGS = -Wl,--wrap=read -Wl,-wrap=write
+test_unit_tcti_device_SOURCES = tcti/commonchecks.c tcti/tcti_device.c \
+    test/unit/tcti-device.c
 
 test_unit_getcommands_malloc_mock_CFLAGS  = $(CMOCKA_CFLAGS) $(AM_CFLAGS)
 test_unit_getcommands_malloc_mock_LDADD   = $(CMOCKA_LIBS)
@@ -141,8 +144,9 @@ sysapi_libsapi_la_SOURCES = $(SYSAPI_C) $(SYSAPIUTIL_C)
 
 tcti_libtcti_device_la_CFLAGS   = $(AM_CFLAGS)
 tcti_libtcti_device_la_LDFLAGS  = -Wl,--version-script=$(srcdir)/tcti/tcti_device.map
+tcti_libtcti_device_la_LIBADD   = $(libmarshal)
 tcti_libtcti_device_la_SOURCES  = tcti/tcti_device.c tcti/commonchecks.c \
-    common/debug.c sysapi/sysapi_util/changeEndian.c
+    common/debug.c
 
 tcti_libtcti_socket_la_CFLAGS   = $(AM_CFLAGS)
 tcti_libtcti_socket_la_LDFLAGS  = -Wl,--version-script=$(srcdir)/tcti/tcti_socket.map
@@ -166,6 +170,10 @@ test_integration_get_random_SOURCES = test/integration/get-random.c \
 test_integration_self_test_LDADD   = $(TESTS_LDADD)
 test_integration_self_test_SOURCES = test/integration/self-test.c \
     test/integration/main.c
+
+test_integration_start_auth_session_LDADD = $(TESTS_LDADD)
+test_integration_start_auth_session_SOURCES = test/integration/main.c \
+    test/integration/start-auth-session.c
 
 test_integration_pcr_extension_LDADD   = $(TESTS_LDADD)
 test_integration_pcr_extension_SOURCES = test/integration/pcr-extension.c \
