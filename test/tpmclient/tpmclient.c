@@ -43,6 +43,7 @@
 #include <stdlib.h>   // Needed for _wtoi
 #include <string.h>
 
+#include "marshal/base-types.h"
 #include "sapi/tpm20.h"
 #include "sysapi_util.h"
 #include "test/common/sample/sample.h"
@@ -1391,7 +1392,7 @@ void TestStartAuthSession()
     UINT32 rval;
     TPM2B_ENCRYPTED_SECRET encryptedSalt;
     TPMT_SYM_DEF symmetric;
-    SESSION *authSession;
+    SESSION *authSession = NULL;
     TPM2B_NONCE nonceCaller;
     UINT16 i;
 #ifdef DEBUG_GAP_HANDLING
@@ -4059,7 +4060,7 @@ void SimplePolicyTest()
 {
     UINT32 rval, sessionCmdRval;
     TPM2B_AUTH  nvAuth;
-    SESSION *nvSession, *trialPolicySession;
+    SESSION *nvSession = NULL, *trialPolicySession = NULL;
     TPMA_NV nvAttributes;
     TPM2B_DIGEST authPolicy;
     TPM2B_NAME nvName;
@@ -4325,7 +4326,7 @@ void SimpleHmacTest()
 {
     UINT32 rval, sessionCmdRval;
     TPM2B_AUTH  nvAuth;
-    SESSION *nvSession;
+    SESSION *nvSession = NULL;
     TPMA_NV nvAttributes;
     TPM2B_DIGEST authPolicy;
     TPM2B_NAME nvName;
@@ -4931,7 +4932,7 @@ void HmacSessionTest()
     TPM2B_NAME nvName;
     TPM_RC sessionCmdRval;
 
-    SESSION *nvSession;
+    SESSION *nvSession = NULL;
     TSS2_SYS_CONTEXT *rdSysContext;
     TSS2_SYS_CONTEXT *wrSysContext;
     TPM2B_AUTH  nvAuth;
@@ -4987,7 +4988,7 @@ void HmacSessionTest()
         // Iterate through variations of decrypt and encrypt sessions.
         for( k = 0; k < sizeof( decryptEncryptSetups ); k++ )
         {
-            for( decryptEncryptMode = CFB_MODE; decryptEncryptMode < XOR_MODE; decryptEncryptMode++ )
+            for( decryptEncryptMode = CFB_MODE; decryptEncryptMode <= XOR_MODE; decryptEncryptMode++ )
             {
                 TPMS_AUTH_COMMAND sessionData = { TPM_RS_PW, };
                 TPMS_AUTH_RESPONSE sessionDataOut;
@@ -5361,7 +5362,7 @@ UINT32 writeDataString = 0xdeadbeef;
 void TestEncryptDecryptSession()
 {
     TSS2_RC             rval = TSS2_RC_SUCCESS;
-    SESSION             *encryptDecryptSession;
+    SESSION             *encryptDecryptSession = NULL;
     TPMT_SYM_DEF        symmetric;
     TPM2B_MAX_NV_BUFFER writeData, encryptedWriteData;
     TPM2B_MAX_NV_BUFFER encryptedReadData, decryptedReadData,
@@ -6083,7 +6084,7 @@ void PrepareTests()
 
 void  RmZeroSizedResponseTest()
 {
-    SESSION *encryptSession;
+    SESSION *encryptSession = NULL;
     TPM2B_NONCE nonceCaller;
     TPMT_SYM_DEF symmetric;
 	TSS2_RC rval = TSS2_RC_SUCCESS;
@@ -6118,7 +6119,8 @@ void  RmZeroSizedResponseTest()
 
 void CmdRspAuthsTests()
 {
-    SESSION *encryptSession, *decryptSession, *auditSession;
+    SESSION *encryptSession = NULL, *decryptSession = NULL,
+        *auditSession = NULL;
     TPM2B_NONCE nonceCaller, nonceTpm;
     TPMT_SYM_DEF symmetric;
 	TSS2_RC rval = TSS2_RC_SUCCESS;
@@ -6258,7 +6260,7 @@ void CmdRspAuthsTests()
     ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->maxCommandSize = savedMaxCommandSize;
 
     // Setup for response auths test.
-    ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->maxCommandSize = CHANGE_ENDIAN_DWORD( savedMaxCommandSize );
+    ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->maxCommandSize = BE_TO_HOST_32( savedMaxCommandSize );
     rval = Tss2_Sys_SetCmdAuths( sysContext, &cmdAuths );
     CheckPassed( rval ); // #15
 
@@ -6334,19 +6336,19 @@ void CmdRspAuthsTests()
     // Test for non-matching count: cmd auth count doesn't
     // match returned auth count.
     rspAuths.rspAuthsCount = 3;
-    savedResponseSize = CHANGE_ENDIAN_DWORD( ( (TPM20_Header_Out *)( ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->tpmOutBuffPtr ) )->responseSize );
-    ( (TPM20_Header_Out *)( ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->tpmOutBuffPtr ) )->responseSize = CHANGE_ENDIAN_DWORD( savedResponseSize - 5 );
+    savedResponseSize = ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->rsp_header.size;
+    ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->rsp_header.size = savedResponseSize - 5;
     rval = Tss2_Sys_GetRspAuths( sysContext, &rspAuths );
     CheckFailed( rval, TSS2_SYS_RC_INVALID_SESSIONS ); // #15
 
     // Test for malformed response.
     rspAuths.rspAuthsCount = 2;
-    ( (TPM20_Header_Out *)( ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->tpmOutBuffPtr ) )->responseSize = CHANGE_ENDIAN_DWORD( savedResponseSize - 7 );
+    ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->rsp_header.size = savedResponseSize - 7;
     rval = Tss2_Sys_GetRspAuths( sysContext, &rspAuths );
     CheckFailed( rval, TSS2_SYS_RC_MALFORMED_RESPONSE ); // #16
 
     // Ths one should pass.
-    ( (TPM20_Header_Out *)( ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->tpmOutBuffPtr ) )->responseSize = CHANGE_ENDIAN_DWORD( savedResponseSize );
+    ( (_TSS2_SYS_CONTEXT_BLOB *)sysContext )->rsp_header.size = savedResponseSize;
     rval = Tss2_Sys_GetRspAuths( sysContext, &rspAuths );
     CheckPassed( rval ); // #17
 

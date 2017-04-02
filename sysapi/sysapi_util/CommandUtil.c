@@ -189,13 +189,18 @@ TSS2_RC CommonPrepareEpilogue(
 // Common to all _Complete
 TSS2_RC CommonComplete( TSS2_SYS_CONTEXT *sysContext )
 {
-    UINT32 rspSize = CHANGE_ENDIAN_DWORD( ( (TPM20_Header_Out *)( SYS_CONTEXT->tpmOutBuffPtr )  )->responseSize );
+    UINT32 rspSize;
 
     if( sysContext == NULL )
     {
         return TSS2_SYS_RC_BAD_REFERENCE;
     }
-    else if( SYS_CONTEXT->previousStage != CMD_STAGE_RECEIVE_RESPONSE || SYS_CONTEXT->rval != TSS2_RC_SUCCESS )
+    else
+    {
+        rspSize = CHANGE_ENDIAN_DWORD( ( (TPM20_Header_Out *)( SYS_CONTEXT->tpmOutBuffPtr )  )->responseSize );
+    }
+
+    if( SYS_CONTEXT->previousStage != CMD_STAGE_RECEIVE_RESPONSE || SYS_CONTEXT->rval != TSS2_RC_SUCCESS )
     {
         SYS_CONTEXT->rval = TSS2_SYS_RC_BAD_SEQUENCE;
     }
@@ -255,7 +260,7 @@ TSS2_RC CommonOneCall(
 
         if ( SYS_CONTEXT->rval == TSS2_RC_SUCCESS )
         {
-            if( SYS_CONTEXT->responseCode == TPM_RC_SUCCESS )
+            if( SYS_CONTEXT->rsp_header.rsp_code == TPM_RC_SUCCESS )
             {
                 if( CHANGE_ENDIAN_WORD( ( (TPM20_Header_Out *)( SYS_CONTEXT->tpmOutBuffPtr )  )->tag ) == TPM_ST_SESSIONS &&
                         rspAuthsArray != 0 )
