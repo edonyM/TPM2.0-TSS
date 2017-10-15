@@ -1,16 +1,18 @@
-m4_define([tpm20_major_version], [1])
-m4_define([tpm20_minor_version], [0])
-m4_define([tpm20_version_string], [tpm20_major_version.tpm20_minor_version])
-
-AC_INIT([tpm2.0-tss], [tpm20_version_string])
+AC_INIT([tpm2-tss],
+        [2.0.0-dev],
+        [https://github.com/01org/tpm2-tss/issues],
+        [],
+        [https://github.com/01org/tpm2-tss])
 AC_CONFIG_MACRO_DIR([m4])
 AC_PROG_CC
 LT_INIT()
-AC_C_BIGENDIAN
-AX_PTHREAD([], [AC_MSG_ERROR([requires pthread])])
 AM_INIT_AUTOMAKE([foreign
                   subdir-objects])
 AC_CONFIG_FILES([Makefile])
+
+# propagate configure arguments to distcheck
+AC_SUBST([DISTCHECK_CONFIGURE_FLAGS],[$ac_configure_args])
+
 AC_ARG_ENABLE([unit],
             [AS_HELP_STRING([--enable-unit],
                             [build cmocka unit tests (default is no)])],
@@ -22,6 +24,20 @@ AS_IF([test "x$enable_unit" != xno],
                          [AC_DEFINE([HAVE_CMOCKA],
                                     [1])])])
 AM_CONDITIONAL([UNIT], [test "x$enable_unit" != xno])
+#
+# simulator binary
+#
+AC_MSG_CHECKING([Checking for simulator binary: $with_simulatorbin])
+AC_ARG_WITH([simulatorbin],
+            [AS_HELP_STRING([--with-simulatorbin=tpm_server],[simulator executable])],
+            [AS_IF([test \( -f "$with_simulatorbin" \) -a \( -x "$with_simulatorbin" \)],
+                   [AC_MSG_RESULT([success])
+                    AC_SUBST([SIMULATOR_BIN],[$with_simulatorbin])
+                    AX_NORMALIZE_PATH([with_simulatorbin])
+                    with_simulatorbin_set=yes],
+                   [AC_MSG_ERROR([TPM simulator binary provided does not exist])])],
+            [with_simulatorbin_set=no])
+AM_CONDITIONAL([SIMULATOR_BIN],[test "x$with_simulatorbin_set" = "xyes"])
 
 AX_ADD_COMPILER_FLAG([-Wall])
 AX_ADD_COMPILER_FLAG([-Werror])
@@ -31,8 +47,15 @@ AX_ADD_COMPILER_FLAG([-Wformat-security])
 AX_ADD_COMPILER_FLAG([-fstack-protector-all])
 AX_ADD_COMPILER_FLAG([-fpic])
 AX_ADD_COMPILER_FLAG([-fPIC])
-AX_ADD_PREPROC_FLAG([-D_FORTIFY_SOURCE=2])
-AX_ADD_PREPROC_FLAG([-U_FORTIFY_SOURCE])
+
+AC_ARG_ENABLE([debug],
+            [AS_HELP_STRING([--enable-debug],
+                            [build with debug info (default is no)])],
+            [enable_debug=$enableval],
+            [enable_debug=no])
+AS_IF([test "x$enable_debug" = "xyes"], AX_ADD_COMPILER_FLAG([-ggdb3 -O0]))
+AS_IF([test "x$enable_debug" = "xno"], [AX_ADD_PREPROC_FLAG([-U_FORTIFY_SOURCE])
+                                        AX_ADD_PREPROC_FLAG([-D_FORTIFY_SOURCE=2])])
 AX_ADD_LINK_FLAG([-Wl,--no-undefined])
 AX_ADD_LINK_FLAG([-Wl,-z,noexecstack])
 AX_ADD_LINK_FLAG([-Wl,-z,now])

@@ -34,7 +34,7 @@ uint8_t name2b_marshalled[] = {
 };
 size_t marshalled_size = sizeof (name2b_marshalled);
 
-void
+static int
 marshal_TPM2B_NAME_setup (void **state)
 {
     marshal_simple2b_t *data;
@@ -45,9 +45,10 @@ marshal_TPM2B_NAME_setup (void **state)
     data->rc          = TSS2_RC_SUCCESS;
 
     *state = data;
+    return 0;
 }
 
-void
+static int
 marshal_TPM2B_NAME_teardown (void **state)
 {
     marshal_simple2b_t *data;
@@ -58,6 +59,7 @@ marshal_TPM2B_NAME_teardown (void **state)
             free (data->buffer);
         free (data);
     }
+    return 0;
 }
 /**
  * Make a call to Marshal_UINT16 function that should succeed. The *_setup
@@ -67,7 +69,7 @@ marshal_TPM2B_NAME_teardown (void **state)
  * The workings of the Marshal_UINT16 function is a bit complex, so we
  * assert the expected results as well.
  */
-void
+static void
 marshal_TPM2B_NAME_good (void **state)
 {
     marshal_simple2b_t *data;
@@ -78,7 +80,7 @@ marshal_TPM2B_NAME_good (void **state)
      * doesn't change.
      */
     data = (marshal_simple2b_t*)*state;
-    uint8_t *nextData = data->buffer;
+    size_t nextData = 0;
 
     Marshal_Simple_TPM2B (data->buffer,
                           data->buffer_size,
@@ -95,11 +97,11 @@ marshal_TPM2B_NAME_good (void **state)
      * The Marshal_* functions advance the 'nextData' parameter by the size of
      * the marshalled data.
      */
-    assert_int_equal (data->buffer, nextData - marshalled_size);
+    assert_int_equal (nextData, marshalled_size);
     /* Finally the return code should indicate success. */
     assert_int_equal (data->rc, TSS2_RC_SUCCESS);
 }
-void
+static void
 unmarshal_TPM2B_NAME_good (void **state)
 {
     /**
@@ -116,7 +118,7 @@ unmarshal_TPM2B_NAME_good (void **state)
      */
     name2b_unmarshal.t.size = sizeof (name2b_unmarshal.t.name);
 
-    uint8_t *nextData = name2b_marshalled;
+    size_t nextData = 0;
 
     Unmarshal_Simple_TPM2B (name2b_marshalled,
                             marshalled_size,
@@ -127,17 +129,20 @@ unmarshal_TPM2B_NAME_good (void **state)
     assert_int_equal (rc, TSS2_RC_SUCCESS);
     /* The size of the unmarshalled structure should match the reference */
     assert_int_equal (name2b_unmarshal.t.size, name2b.t.size);
+    /* The size of the unmarshalled structure should match the nextData +
+     * sizeof(name2b.t.size) */
+    assert_int_equal (nextData, name2b.t.size + sizeof(UINT16));
     /* the contents of the name buffer should match the reference */
     assert_memory_equal (name2b_unmarshal.t.name, name2b.t.name, name2b.t.size);
 }
 int
 main (void)
 {
-    const UnitTest tests [] = {
-        unit_test_setup_teardown (marshal_TPM2B_NAME_good,
+    const struct CMUnitTest tests [] = {
+        cmocka_unit_test_setup_teardown (marshal_TPM2B_NAME_good,
                                   marshal_TPM2B_NAME_setup,
                                   marshal_TPM2B_NAME_teardown),
-        unit_test (unmarshal_TPM2B_NAME_good),
+        cmocka_unit_test (unmarshal_TPM2B_NAME_good),
     };
-    return run_tests (tests);
+    return cmocka_run_group_tests (tests, NULL, NULL);
 }

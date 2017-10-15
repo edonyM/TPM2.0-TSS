@@ -4,7 +4,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "sapi/marshal.h"
+#include "sapi/tss2_mu.h"
 
 /*
  * Test case for successful UINT8 marshaling with NULL offset.
@@ -17,7 +17,7 @@ UINT8_marshal_success (void **state)
     size_t  buffer_size = sizeof (buffer);
     TSS2_RC rc;
 
-    rc = UINT8_Marshal (src, buffer, buffer_size, NULL);
+    rc = Tss2_MU_UINT8_Marshal (src, buffer, buffer_size, NULL);
 
     assert_int_equal (rc, TSS2_RC_SUCCESS);
     assert_int_equal (src, buffer [0]);
@@ -34,7 +34,7 @@ UINT8_marshal_success_offset (void **state)
     size_t  offset = 1;
     TSS2_RC rc;
 
-    rc = UINT8_Marshal (src, buffer, buffer_size, &offset);
+    rc = Tss2_MU_UINT8_Marshal (src, buffer, buffer_size, &offset);
 
     assert_int_equal (rc, TSS2_RC_SUCCESS);
     assert_int_equal (src, buffer [1]);
@@ -51,7 +51,7 @@ UINT8_marshal_buffer_null_with_offset (void **state)
     size_t offset = 100;
     TSS2_RC rc;
 
-    rc = UINT8_Marshal (src, NULL, 2, &offset);
+    rc = Tss2_MU_UINT8_Marshal (src, NULL, 2, &offset);
 
     assert_int_equal (rc, TSS2_RC_SUCCESS);
     assert_int_equal (offset, 100 + sizeof (src));
@@ -65,7 +65,7 @@ UINT8_marshal_buffer_null_offset_null (void **state)
     UINT8 src = 0x1a;
     TSS2_RC rc;
 
-    rc = UINT8_Marshal (src, NULL, sizeof (src), NULL);
+    rc = Tss2_MU_UINT8_Marshal (src, NULL, sizeof (src), NULL);
 
     assert_int_equal (rc, TSS2_TYPES_RC_BAD_REFERENCE);
 }
@@ -81,7 +81,7 @@ UINT8_marshal_buffer_size_lt_data (void **state)
     size_t  offset = 2;
     TSS2_RC rc;
 
-    rc = UINT8_Marshal (src, buffer, sizeof (src), &offset);
+    rc = Tss2_MU_UINT8_Marshal (src, buffer, sizeof (src), &offset);
 
     assert_int_equal (rc, TSS2_TYPES_RC_INSUFFICIENT_BUFFER);
     assert_int_equal (offset, 2);
@@ -99,7 +99,7 @@ UINT8_marshal_buffer_size_lt_offset (void **state)
     size_t  offset = sizeof (buffer) + 1;
     TSS2_RC rc;
 
-    rc = UINT8_Marshal (src, buffer, buffer_size, &offset);
+    rc = Tss2_MU_UINT8_Marshal (src, buffer, buffer_size, &offset);
 
     assert_int_equal (rc, TSS2_TYPES_RC_INSUFFICIENT_BUFFER);
     assert_int_equal (offset, sizeof (buffer) + 1);
@@ -115,7 +115,7 @@ UINT8_unmarshal_success (void **state)
     UINT8   dest = 0;
     TSS2_RC rc;
 
-    rc = UINT8_Unmarshal (buffer, buffer_size, NULL, &dest);
+    rc = Tss2_MU_UINT8_Unmarshal (buffer, buffer_size, NULL, &dest);
 
     assert_int_equal (rc, TSS2_RC_SUCCESS);
     assert_int_equal (buffer [0], dest);
@@ -132,7 +132,7 @@ UINT8_unmarshal_success_offset (void **state)
     size_t  offset = 1;
     TSS2_RC rc;
 
-    rc = UINT8_Unmarshal (buffer, buffer_size, &offset, &dest);
+    rc = Tss2_MU_UINT8_Unmarshal (buffer, buffer_size, &offset, &dest);
 
     assert_int_equal (rc, TSS2_RC_SUCCESS);
     assert_int_equal (buffer [1], dest);
@@ -146,7 +146,7 @@ UINT8_unmarshal_buffer_null (void **state)
 {
     TSS2_RC rc;
 
-    rc = UINT8_Unmarshal (NULL, 1, NULL, NULL);
+    rc = Tss2_MU_UINT8_Unmarshal (NULL, 1, NULL, NULL);
 
     assert_int_equal (rc, TSS2_TYPES_RC_BAD_REFERENCE);
 }
@@ -160,10 +160,27 @@ UINT8_unmarshal_dest_null (void **state)
     uint8_t buffer [1];
     TSS2_RC rc;
 
-    rc = UINT8_Unmarshal (buffer, sizeof (buffer), NULL, NULL);
+    rc = Tss2_MU_UINT8_Unmarshal (buffer, sizeof (buffer), NULL, NULL);
 
     assert_int_equal (rc, TSS2_TYPES_RC_BAD_REFERENCE);
 }
+/*
+ * Test case ensures the offset is updated when dest is NULL
+ * and offset is valid
+ */
+void
+UINT8_unmarshal_dest_null_offset_valid (void **state)
+{
+    uint8_t buffer [2];
+    size_t  offset = 1;
+    TSS2_RC rc;
+
+    rc = Tss2_MU_UINT8_Unmarshal (buffer, sizeof (buffer), &offset, NULL);
+
+    assert_int_equal (rc, TSS2_RC_SUCCESS);
+    assert_int_equal (offset, 2);
+}
+
 /*
  * Test case ensures that INSUFFICIENT_BUFFER is returned when buffer_size
  * is less than the provided offset.
@@ -176,7 +193,7 @@ UINT8_unmarshal_buffer_size_lt_offset (void **state)
     size_t  offset = sizeof (buffer) + 1;
     TSS2_RC rc;
 
-    rc = UINT8_Unmarshal (buffer, sizeof (buffer), &offset, &dest);
+    rc = Tss2_MU_UINT8_Unmarshal (buffer, sizeof (buffer), &offset, &dest);
 
     assert_int_equal (rc, TSS2_TYPES_RC_INSUFFICIENT_BUFFER);
     assert_int_equal (offset, sizeof (buffer) + 1);
@@ -194,7 +211,7 @@ UINT8_unmarshal_buffer_size_lt_dest (void **state)
     size_t  offset = sizeof (buffer);
     TSS2_RC rc;
 
-    rc = UINT8_Unmarshal (buffer, sizeof (buffer), &offset, &dest);
+    rc = Tss2_MU_UINT8_Unmarshal (buffer, sizeof (buffer), &offset, &dest);
 
     assert_int_equal (rc, TSS2_TYPES_RC_INSUFFICIENT_BUFFER);
     assert_int_equal (offset, sizeof (buffer));
@@ -203,19 +220,20 @@ UINT8_unmarshal_buffer_size_lt_dest (void **state)
 int
 main (void)
 {
-    const UnitTest tests [] = {
-        unit_test (UINT8_marshal_success),
-        unit_test (UINT8_marshal_success_offset),
-        unit_test (UINT8_marshal_buffer_null_with_offset),
-        unit_test (UINT8_marshal_buffer_null_offset_null),
-        unit_test (UINT8_marshal_buffer_size_lt_data),
-        unit_test (UINT8_marshal_buffer_size_lt_offset),
-        unit_test (UINT8_unmarshal_success),
-        unit_test (UINT8_unmarshal_success_offset),
-        unit_test (UINT8_unmarshal_buffer_null),
-        unit_test (UINT8_unmarshal_dest_null),
-        unit_test (UINT8_unmarshal_buffer_size_lt_offset),
-        unit_test (UINT8_unmarshal_buffer_size_lt_dest),
+    const struct CMUnitTest tests [] = {
+        cmocka_unit_test (UINT8_marshal_success),
+        cmocka_unit_test (UINT8_marshal_success_offset),
+        cmocka_unit_test (UINT8_marshal_buffer_null_with_offset),
+        cmocka_unit_test (UINT8_marshal_buffer_null_offset_null),
+        cmocka_unit_test (UINT8_marshal_buffer_size_lt_data),
+        cmocka_unit_test (UINT8_marshal_buffer_size_lt_offset),
+        cmocka_unit_test (UINT8_unmarshal_success),
+        cmocka_unit_test (UINT8_unmarshal_success_offset),
+        cmocka_unit_test (UINT8_unmarshal_buffer_null),
+        cmocka_unit_test (UINT8_unmarshal_dest_null),
+        cmocka_unit_test (UINT8_unmarshal_dest_null_offset_valid),
+        cmocka_unit_test (UINT8_unmarshal_buffer_size_lt_offset),
+        cmocka_unit_test (UINT8_unmarshal_buffer_size_lt_dest),
     };
-    return run_tests (tests);
+    return cmocka_run_group_tests (tests, NULL, NULL);
 }

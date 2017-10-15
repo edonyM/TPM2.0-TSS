@@ -27,6 +27,7 @@
 
 #include "sapi/tpm20.h"
 #include "sysapi_util.h"
+#include "tss2_endian.h"
 
 TSS2_RC Tss2_Sys_GetDecryptParam(
 	TSS2_SYS_CONTEXT 		*sysContext,
@@ -54,7 +55,7 @@ TSS2_RC Tss2_Sys_GetDecryptParam(
         // Get first parameter and return its
         // size and a pointer to it.
         decryptParam = (TPM2B *)( SYS_CONTEXT->cpBuffer );
-        *decryptParamSize = CHANGE_ENDIAN_WORD( decryptParam->size );
+        *decryptParamSize = BE_TO_HOST_16(decryptParam->size);
         *decryptParamBuffer = &( decryptParam->buffer[0] );
     }
     return rval;
@@ -72,73 +73,83 @@ TSS2_RC Tss2_Sys_SetDecryptParam(
     TSS2_RC         rval = TSS2_RC_SUCCESS;
     UINT32          sizeToBeUsed;
     UINT32          currCommandSize;
+    const UINT8 *src, *limit;
+    UINT8 *dst;
+    UINT32 len;
 
     if( decryptParamBuffer == 0 || sysContext == 0 )
     {
-        rval = TSS2_SYS_RC_BAD_REFERENCE;
+        return TSS2_SYS_RC_BAD_REFERENCE;
+    }
+
+    rval = Tss2_Sys_GetDecryptParam( sysContext, &currDecryptParamSize, &currDecryptParamBuffer );
+    if( rval != TSS2_RC_SUCCESS )
+    {
+        return rval;
+    }
+
+    sizeToBeUsed = BE_TO_HOST_32(SYS_REQ_HEADER->commandSize) + decryptParamSize;
+    if( sizeToBeUsed > SYS_CONTEXT->maxCommandSize )
+    {
+        return TSS2_SYS_RC_INSUFFICIENT_CONTEXT;
+    }
+
+    if( currDecryptParamSize == 0 && SYS_CONTEXT->decryptNull )
+    {
+        if( decryptParamSize < 1 )
+        {
+            return TSS2_SYS_RC_BAD_VALUE;
+        }
+
+        /* Move stuff around. First move current cpBuffer down. */
+        src = SYS_CONTEXT->cpBuffer + 2;
+        dst = SYS_CONTEXT->cpBuffer + SYS_CONTEXT->cpBufferUsedSize + 2;
+        len = SYS_CONTEXT->cpBufferUsedSize - 2;
+        limit = SYS_CONTEXT->tpmInBuffPtr + SYS_CONTEXT->maxCommandSize;
+
+        if (dst + len > limit)
+            return TSS2_SYS_RC_INSUFFICIENT_CONTEXT;
+
+        memmove(dst, src, len);
+
+        SYS_CONTEXT->cpBufferUsedSize += decryptParamSize;
+        *(UINT16 *)SYS_CONTEXT->cpBuffer = HOST_TO_BE_16(decryptParamSize);
+
+        src = decryptParamBuffer;
+        dst = (UINT8 *) currDecryptParamBuffer;
+        len = decryptParamSize;
+        limit = SYS_CONTEXT->tpmInBuffPtr + SYS_CONTEXT->maxCommandSize;
+
+        if (dst + len > limit)
+            return TSS2_SYS_RC_INSUFFICIENT_CONTEXT;
+
+        /* Now copy in the encrypted decrypt param. */
+        memmove(dst, src, len);
+
+        // And fixup the command size.
+        currCommandSize = BE_TO_HOST_32(SYS_REQ_HEADER->commandSize);
+        currCommandSize += decryptParamSize;
+        SYS_REQ_HEADER->commandSize = HOST_TO_BE_32(currCommandSize);
     }
     else
     {
-        rval = Tss2_Sys_GetDecryptParam( sysContext, &currDecryptParamSize, &currDecryptParamBuffer );
-
-        if( rval == TSS2_RC_SUCCESS )
+        if( decryptParamSize != currDecryptParamSize )
         {
-            sizeToBeUsed = CHANGE_ENDIAN_DWORD( ( (TPM20_Header_In *)( SYS_CONTEXT->tpmInBuffPtr ) )->commandSize ) + decryptParamSize;
-            if( sizeToBeUsed > SYS_CONTEXT->maxCommandSize )
-            {
-                rval = TSS2_SYS_RC_INSUFFICIENT_CONTEXT;
-            }
-            else if( currDecryptParamSize == 0 && SYS_CONTEXT->decryptNull )
-            {
-                if( decryptParamSize < 1 )
-                {
-                    rval = TSS2_SYS_RC_BAD_VALUE;
-                }
-                else
-                {
-                    // We're going to have to move stuff around.
-                    // First move current cpBuffer down.
-                    rval = CopyMemReverse( SYS_CONTEXT->cpBuffer + SYS_CONTEXT->cpBufferUsedSize + 2, SYS_CONTEXT->cpBuffer + 2,
-                            SYS_CONTEXT->cpBufferUsedSize - 2, SYS_CONTEXT->tpmInBuffPtr + SYS_CONTEXT->maxCommandSize );
-                    if( rval != TSS2_RC_SUCCESS )
-                    {
-                        goto exitTss2_Sys_SetDecryptParam;
-                    }
-                    SYS_CONTEXT->cpBufferUsedSize += decryptParamSize;
-
-                    // Now copy in the encrypted decrypt param.
-                    *(UINT16 *)SYS_CONTEXT->cpBuffer = CHANGE_ENDIAN_WORD( decryptParamSize );
-                    rval = CopyMem( (uint8_t *)currDecryptParamBuffer, decryptParamBuffer, decryptParamSize, SYS_CONTEXT->tpmInBuffPtr + SYS_CONTEXT->maxCommandSize );
-                    if( rval != TSS2_RC_SUCCESS )
-                    {
-                        goto exitTss2_Sys_SetDecryptParam;
-                    }
-
-                    // And fixup the command size.
-                    currCommandSize = CHANGE_ENDIAN_DWORD( ( (TPM20_Header_In *)( SYS_CONTEXT->tpmInBuffPtr ) )->commandSize );
-                    currCommandSize += decryptParamSize;
-                    ( (TPM20_Header_In *)( SYS_CONTEXT->tpmInBuffPtr ) )->commandSize = CHANGE_ENDIAN_DWORD( currCommandSize );
-                }
-            }
-            else
-            {
-                if( decryptParamSize != currDecryptParamSize )
-                {
-                    return TSS2_SYS_RC_BAD_SIZE;
-                }
-                else
-                {
-                    *(UINT16 *)SYS_CONTEXT->cpBuffer = CHANGE_ENDIAN_WORD( decryptParamSize );
-                    rval = CopyMem( (uint8_t *)currDecryptParamBuffer, decryptParamBuffer, decryptParamSize, SYS_CONTEXT->tpmInBuffPtr + SYS_CONTEXT->maxCommandSize );
-                    if( rval != TSS2_RC_SUCCESS )
-                    {
-                        goto exitTss2_Sys_SetDecryptParam;
-                    }
-                }
-            }
+            return TSS2_SYS_RC_BAD_SIZE;
         }
+
+        *(UINT16 *)SYS_CONTEXT->cpBuffer = HOST_TO_BE_16(decryptParamSize);
+
+        src = decryptParamBuffer;
+        dst = (UINT8 *) currDecryptParamBuffer;
+        len = decryptParamSize;
+        limit = SYS_CONTEXT->tpmInBuffPtr + SYS_CONTEXT->maxCommandSize;
+
+        if (dst + len > limit)
+            return TSS2_SYS_RC_INSUFFICIENT_CONTEXT;
+
+        memmove(dst, src, len);
     }
 
-exitTss2_Sys_SetDecryptParam:
     return rval;
 }

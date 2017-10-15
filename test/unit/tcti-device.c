@@ -5,10 +5,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "sapi/marshal.h"
+#include "sapi/tss2_mu.h"
 #include "tcti/tcti_device.h"
 #include "tcti/logging.h"
-#include "sysapi/include/tcti_util.h"
+#include "tcti/tcti.h"
 
 /**
  * When passed all NULL values ensure that we get back the expected RC
@@ -163,7 +163,7 @@ tcti_device_setup (void **state)
     *state = ctx;
 }
 
-static void
+static int
 tcti_device_setup_with_command (void **state)
 {
     TSS2_RC rc;
@@ -176,23 +176,25 @@ tcti_device_setup_with_command (void **state)
     data->buffer_size = 1024;
     data->data_size   = 512;
     data->buffer = malloc (data->buffer_size);
-    rc = TPM_ST_Marshal (TPM_ST_NO_SESSIONS, data->buffer, data->buffer_size, &index);
+    rc = Tss2_MU_TPM_ST_Marshal (TPM_ST_NO_SESSIONS, data->buffer, data->buffer_size, &index);
     assert_true (rc == TSS2_RC_SUCCESS);
-    rc = UINT32_Marshal (data->data_size, data->buffer, data->buffer_size, &index);
+    rc = Tss2_MU_UINT32_Marshal (data->data_size, data->buffer, data->buffer_size, &index);
     assert_true (rc == TSS2_RC_SUCCESS);
-    rc = TPM_CC_Marshal (TPM_CC_Create, data->buffer, data->buffer_size, &index);
+    rc = Tss2_MU_TPM_CC_Marshal (TPM_CC_Create, data->buffer, data->buffer_size, &index);
     assert_true (rc == TSS2_RC_SUCCESS);
 
     *state = data;
+    return 0;
 }
 
-static void
+static int
 tcti_device_teardown (void **state)
 {
     TSS2_TCTI_CONTEXT *ctx = *state;
 
     tss2_tcti_finalize (ctx);
     free (ctx);
+    return 0;
 }
 /*
  * A test case for a successful call to the receive function. This requires
@@ -236,18 +238,18 @@ tcti_device_transmit_success (void **state)
 int
 main(int argc, char* argv[])
 {
-    const UnitTest tests[] = {
-        unit_test (tcti_device_init_all_null_test),
-        unit_test(tcti_device_init_size_test),
-        unit_test (tcti_device_init_log_test),
-        unit_test (tcti_device_log_called_test),
-        unit_test (tcti_device_init_null_config_test),
-        unit_test_setup_teardown (tcti_device_receive_success,
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test (tcti_device_init_all_null_test),
+        cmocka_unit_test(tcti_device_init_size_test),
+        cmocka_unit_test (tcti_device_init_log_test),
+        cmocka_unit_test (tcti_device_log_called_test),
+        cmocka_unit_test (tcti_device_init_null_config_test),
+        cmocka_unit_test_setup_teardown (tcti_device_receive_success,
                                   tcti_device_setup_with_command,
                                   tcti_device_teardown),
-        unit_test_setup_teardown (tcti_device_transmit_success,
+        cmocka_unit_test_setup_teardown (tcti_device_transmit_success,
                                   tcti_device_setup_with_command,
                                   tcti_device_teardown),
     };
-    return run_tests(tests);
+    return cmocka_run_group_tests (tests, NULL, NULL);
 }

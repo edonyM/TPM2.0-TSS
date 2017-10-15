@@ -37,24 +37,13 @@
 
 #include "implementation.h"
 
-#define SET	1
-#define CLEAR	0
-
 #define    MAX_CAP_DATA         (MAX_CAP_BUFFER-sizeof(TPM_CAP)-sizeof(UINT32))
-#define    MAX_CAP_ALGS         (ALG_LAST_VALUE - ALG_FIRST_VALUE + 1)
+#define    MAX_CAP_ALGS         (TPM_ALG_LAST - TPM_ALG_FIRST + 1)
 #define    MAX_CAP_HANDLES      (MAX_CAP_DATA/sizeof(TPM_HANDLE))
-#define    MAX_CAP_CC           (COMMAND_COUNT)
+#define    MAX_CAP_CC           256
 #define    MAX_TPM_PROPERTIES   (MAX_CAP_DATA/sizeof(TPMS_TAGGED_PROPERTY))
 #define    MAX_PCR_PROPERTIES   (MAX_CAP_DATA/sizeof(TPMS_TAGGED_PCR_SELECT))
 #define    MAX_ECC_CURVES       (MAX_CAP_DATA/sizeof(TPM_ECC_CURVE))
-
-/* Table 4  Defines for Logic Values */
-#define	TRUE	1
-#define	FALSE	0
-#define	YES	1
-#define	NO	0
-#define	SET	1
-#define	CLEAR	0
 
 /* Table 5  Definition of Types for Documentation Clarity */
 typedef	UINT32	TPM_ALGORITHM_ID;	 /* this is the 1.2 compatible form of the TPM_ALG_ID  */
@@ -591,35 +580,35 @@ typedef uint32_t	TPMA_OBJECT;
 
 typedef union {
 	struct {
-	unsigned int continueSession : 1;	/* SET 1 In a command this setting indicates that the session is to remain active after successful completion of the command. In a response it indicates that the session is still active. If SET in the command this attribute shall be SET in the response.CLEAR 0 In a command this setting indicates that the TPM should close the session and flush any related context when the command completes successfully. In a response it indicates that the session is closed and the context is no longer active.This attribute has no meaning for a password authorization and the TPM will allow any setting of the attribute in the command and SET the attribute in the response.This attribute will only be CLEAR in one response for a logical session. If the attribute is CLEAR the context associated with the session is no longer in use and the space is available. A session created after another session is ended may have the same handle but logically is not the same session.This attribute has no effect if the command does not complete successfully.  */
-	unsigned int auditExclusive : 1;	/* SET 1 In a command this setting indicates that the command should only be executed if the session is exclusive at the start of the command. In a response it indicates that the session is exclusive. This setting is only allowed if the audit attribute is SET TPM_RC_ATTRIBUTES.CLEAR 0 In a command indicates that the session need not be exclusive at the start of the command.  In a response indicates that the session is not exclusive.In this revision if audit is CLEAR auditExclusive must be CLEAR in the command and will be CLEAR in the response.  In a future revision this bit may have a different meaning if audit is CLEAR.See Exclusive Audit Session clause in TPM 2.0 Part 1.  */
-	unsigned int auditReset : 1;	/* SET 1 In a command this setting indicates that the audit digest of the session should be initialized and the exclusive status of the session SET. This setting is only allowed if the audit attribute is SET TPM_RC_ATTRIBUTES.CLEAR 0 In a command indicates that the audit digest should not be initialized.This bit is always CLEAR in a response.In this revision if audit is CLEAR auditReset must be clear in the command and will be CLEAR in the response.  In a future revision this bit may have a different meaning if audit is CLEAR.  */
-	unsigned int reserved1 : 2;	/* shall be CLEAR  */
-	unsigned int decrypt : 1;	/* SET 1 In a command this setting indicates that the first parameter in the command is symmetrically encrypted using the parameter encryption scheme described in TPM 2.0 Part 1. The TPM will decrypt the parameter after performing any HMAC computations and before unmarshaling the parameter. In a response the attribute is copied from the request but has no effect on the response.CLEAR 0 Session not used for encryption.For a password authorization this attribute will be CLEAR in both the command and response.This attribute may only be SET in one session per command.This attribute may be SET in a session that is not associated with a command handle. Such a session is provided for purposes of encrypting a parameter and not for authorization.This attribute may be SET in combination with any other session attributes.This attribute may only be SET if the first parameter of the command is a sized buffer TPM2B_.  */
-	unsigned int encrypt : 1;	/* SET 1 In a command this setting indicates that the TPM should use this session to encrypt the first parameter in the response. In a response it indicates that the attribute was set in the command and that the TPM used the session to encrypt the first parameter in the response using the parameter encryption scheme described in TPM 2.0 Part 1.CLEAR 0 Session not used for encryption.For a password authorization this attribute will be CLEAR in both the command and response.This attribute may only be SET in one session per command.This attribute may be SET in a session that is not associated with a command handle. Such a session is provided for purposes of encrypting a parameter and not for authorization.This attribute may only be SET if the first parameter of a response is a sized buffer TPM2B_.  */
-	unsigned int audit : 1;	/* SET 1 In a command or response this setting indicates that the session is for audit and that auditExclusive and auditReset have meaning. This session may also be used for authorization encryption or decryption. The encrypted and encrypt fields may be SET or CLEAR.CLEAR 0 Session is not used for audit.This attribute may only be SET in one session per command or response. If SET in the command then this attribute will be SET in the response.  */
+	unsigned char continueSession : 1;	/* SET 1 In a command this setting indicates that the session is to remain active after successful completion of the command. In a response it indicates that the session is still active. If SET in the command this attribute shall be SET in the response.CLEAR 0 In a command this setting indicates that the TPM should close the session and flush any related context when the command completes successfully. In a response it indicates that the session is closed and the context is no longer active.This attribute has no meaning for a password authorization and the TPM will allow any setting of the attribute in the command and SET the attribute in the response.This attribute will only be CLEAR in one response for a logical session. If the attribute is CLEAR the context associated with the session is no longer in use and the space is available. A session created after another session is ended may have the same handle but logically is not the same session.This attribute has no effect if the command does not complete successfully.  */
+	unsigned char auditExclusive : 1;	/* SET 1 In a command this setting indicates that the command should only be executed if the session is exclusive at the start of the command. In a response it indicates that the session is exclusive. This setting is only allowed if the audit attribute is SET TPM_RC_ATTRIBUTES.CLEAR 0 In a command indicates that the session need not be exclusive at the start of the command.  In a response indicates that the session is not exclusive.In this revision if audit is CLEAR auditExclusive must be CLEAR in the command and will be CLEAR in the response.  In a future revision this bit may have a different meaning if audit is CLEAR.See Exclusive Audit Session clause in TPM 2.0 Part 1.  */
+	unsigned char auditReset : 1;	/* SET 1 In a command this setting indicates that the audit digest of the session should be initialized and the exclusive status of the session SET. This setting is only allowed if the audit attribute is SET TPM_RC_ATTRIBUTES.CLEAR 0 In a command indicates that the audit digest should not be initialized.This bit is always CLEAR in a response.In this revision if audit is CLEAR auditReset must be clear in the command and will be CLEAR in the response.  In a future revision this bit may have a different meaning if audit is CLEAR.  */
+	unsigned char reserved1 : 2;	/* shall be CLEAR  */
+	unsigned char decrypt : 1;	/* SET 1 In a command this setting indicates that the first parameter in the command is symmetrically encrypted using the parameter encryption scheme described in TPM 2.0 Part 1. The TPM will decrypt the parameter after performing any HMAC computations and before unmarshaling the parameter. In a response the attribute is copied from the request but has no effect on the response.CLEAR 0 Session not used for encryption.For a password authorization this attribute will be CLEAR in both the command and response.This attribute may only be SET in one session per command.This attribute may be SET in a session that is not associated with a command handle. Such a session is provided for purposes of encrypting a parameter and not for authorization.This attribute may be SET in combination with any other session attributes.This attribute may only be SET if the first parameter of the command is a sized buffer TPM2B_.  */
+	unsigned char encrypt : 1;	/* SET 1 In a command this setting indicates that the TPM should use this session to encrypt the first parameter in the response. In a response it indicates that the attribute was set in the command and that the TPM used the session to encrypt the first parameter in the response using the parameter encryption scheme described in TPM 2.0 Part 1.CLEAR 0 Session not used for encryption.For a password authorization this attribute will be CLEAR in both the command and response.This attribute may only be SET in one session per command.This attribute may be SET in a session that is not associated with a command handle. Such a session is provided for purposes of encrypting a parameter and not for authorization.This attribute may only be SET if the first parameter of a response is a sized buffer TPM2B_.  */
+	unsigned char audit : 1;	/* SET 1 In a command or response this setting indicates that the session is for audit and that auditExclusive and auditReset have meaning. This session may also be used for authorization encryption or decryption. The encrypted and encrypt fields may be SET or CLEAR.CLEAR 0 Session is not used for audit.This attribute may only be SET in one session per command or response. If SET in the command then this attribute will be SET in the response.  */
 	};
-	UINT32 val;
+	UINT8 val;
 } TPMA_SESSION;
 
 #elif defined TPM_BITFIELD_BE
 
 typedef union {
 	struct {
-	unsigned int audit : 1;	/* SET 1 In a command or response this setting indicates that the session is for audit and that auditExclusive and auditReset have meaning. This session may also be used for authorization encryption or decryption. The encrypted and encrypt fields may be SET or CLEAR.CLEAR 0 Session is not used for audit.This attribute may only be SET in one session per command or response. If SET in the command then this attribute will be SET in the response.  */
-	unsigned int encrypt : 1;	/* SET 1 In a command this setting indicates that the TPM should use this session to encrypt the first parameter in the response. In a response it indicates that the attribute was set in the command and that the TPM used the session to encrypt the first parameter in the response using the parameter encryption scheme described in TPM 2.0 Part 1.CLEAR 0 Session not used for encryption.For a password authorization this attribute will be CLEAR in both the command and response.This attribute may only be SET in one session per command.This attribute may be SET in a session that is not associated with a command handle. Such a session is provided for purposes of encrypting a parameter and not for authorization.This attribute may only be SET if the first parameter of a response is a sized buffer TPM2B_.  */
-	unsigned int decrypt : 1;	/* SET 1 In a command this setting indicates that the first parameter in the command is symmetrically encrypted using the parameter encryption scheme described in TPM 2.0 Part 1. The TPM will decrypt the parameter after performing any HMAC computations and before unmarshaling the parameter. In a response the attribute is copied from the request but has no effect on the response.CLEAR 0 Session not used for encryption.For a password authorization this attribute will be CLEAR in both the command and response.This attribute may only be SET in one session per command.This attribute may be SET in a session that is not associated with a command handle. Such a session is provided for purposes of encrypting a parameter and not for authorization.This attribute may be SET in combination with any other session attributes.This attribute may only be SET if the first parameter of the command is a sized buffer TPM2B_.  */
-	unsigned int reserved1 : 2;	/* shall be CLEAR  */
-	unsigned int auditReset : 1;	/* SET 1 In a command this setting indicates that the audit digest of the session should be initialized and the exclusive status of the session SET. This setting is only allowed if the audit attribute is SET TPM_RC_ATTRIBUTES.CLEAR 0 In a command indicates that the audit digest should not be initialized.This bit is always CLEAR in a response.In this revision if audit is CLEAR auditReset must be clear in the command and will be CLEAR in the response.  In a future revision this bit may have a different meaning if audit is CLEAR.  */
-	unsigned int auditExclusive : 1;	/* SET 1 In a command this setting indicates that the command should only be executed if the session is exclusive at the start of the command. In a response it indicates that the session is exclusive. This setting is only allowed if the audit attribute is SET TPM_RC_ATTRIBUTES.CLEAR 0 In a command indicates that the session need not be exclusive at the start of the command.  In a response indicates that the session is not exclusive.In this revision if audit is CLEAR auditExclusive must be CLEAR in the command and will be CLEAR in the response.  In a future revision this bit may have a different meaning if audit is CLEAR.See Exclusive Audit Session clause in TPM 2.0 Part 1.  */
-	unsigned int continueSession : 1;	/* SET 1 In a command this setting indicates that the session is to remain active after successful completion of the command. In a response it indicates that the session is still active. If SET in the command this attribute shall be SET in the response.CLEAR 0 In a command this setting indicates that the TPM should close the session and flush any related context when the command completes successfully. In a response it indicates that the session is closed and the context is no longer active.This attribute has no meaning for a password authorization and the TPM will allow any setting of the attribute in the command and SET the attribute in the response.This attribute will only be CLEAR in one response for a logical session. If the attribute is CLEAR the context associated with the session is no longer in use and the space is available. A session created after another session is ended may have the same handle but logically is not the same session.This attribute has no effect if the command does not complete successfully.  */
+	unsigned char audit : 1;	/* SET 1 In a command or response this setting indicates that the session is for audit and that auditExclusive and auditReset have meaning. This session may also be used for authorization encryption or decryption. The encrypted and encrypt fields may be SET or CLEAR.CLEAR 0 Session is not used for audit.This attribute may only be SET in one session per command or response. If SET in the command then this attribute will be SET in the response.  */
+	unsigned char encrypt : 1;	/* SET 1 In a command this setting indicates that the TPM should use this session to encrypt the first parameter in the response. In a response it indicates that the attribute was set in the command and that the TPM used the session to encrypt the first parameter in the response using the parameter encryption scheme described in TPM 2.0 Part 1.CLEAR 0 Session not used for encryption.For a password authorization this attribute will be CLEAR in both the command and response.This attribute may only be SET in one session per command.This attribute may be SET in a session that is not associated with a command handle. Such a session is provided for purposes of encrypting a parameter and not for authorization.This attribute may only be SET if the first parameter of a response is a sized buffer TPM2B_.  */
+	unsigned char decrypt : 1;	/* SET 1 In a command this setting indicates that the first parameter in the command is symmetrically encrypted using the parameter encryption scheme described in TPM 2.0 Part 1. The TPM will decrypt the parameter after performing any HMAC computations and before unmarshaling the parameter. In a response the attribute is copied from the request but has no effect on the response.CLEAR 0 Session not used for encryption.For a password authorization this attribute will be CLEAR in both the command and response.This attribute may only be SET in one session per command.This attribute may be SET in a session that is not associated with a command handle. Such a session is provided for purposes of encrypting a parameter and not for authorization.This attribute may be SET in combination with any other session attributes.This attribute may only be SET if the first parameter of the command is a sized buffer TPM2B_.  */
+	unsigned char reserved1 : 2;	/* shall be CLEAR  */
+	unsigned char auditReset : 1;	/* SET 1 In a command this setting indicates that the audit digest of the session should be initialized and the exclusive status of the session SET. This setting is only allowed if the audit attribute is SET TPM_RC_ATTRIBUTES.CLEAR 0 In a command indicates that the audit digest should not be initialized.This bit is always CLEAR in a response.In this revision if audit is CLEAR auditReset must be clear in the command and will be CLEAR in the response.  In a future revision this bit may have a different meaning if audit is CLEAR.  */
+	unsigned char auditExclusive : 1;	/* SET 1 In a command this setting indicates that the command should only be executed if the session is exclusive at the start of the command. In a response it indicates that the session is exclusive. This setting is only allowed if the audit attribute is SET TPM_RC_ATTRIBUTES.CLEAR 0 In a command indicates that the session need not be exclusive at the start of the command.  In a response indicates that the session is not exclusive.In this revision if audit is CLEAR auditExclusive must be CLEAR in the command and will be CLEAR in the response.  In a future revision this bit may have a different meaning if audit is CLEAR.See Exclusive Audit Session clause in TPM 2.0 Part 1.  */
+	unsigned char continueSession : 1;	/* SET 1 In a command this setting indicates that the session is to remain active after successful completion of the command. In a response it indicates that the session is still active. If SET in the command this attribute shall be SET in the response.CLEAR 0 In a command this setting indicates that the TPM should close the session and flush any related context when the command completes successfully. In a response it indicates that the session is closed and the context is no longer active.This attribute has no meaning for a password authorization and the TPM will allow any setting of the attribute in the command and SET the attribute in the response.This attribute will only be CLEAR in one response for a logical session. If the attribute is CLEAR the context associated with the session is no longer in use and the space is available. A session created after another session is ended may have the same handle but logically is not the same session.This attribute has no effect if the command does not complete successfully.  */
 	};
-	UINT32 val;
+	UINT8 val;
 } TPMA_SESSION;
 
 #else
 
-typedef uint32_t	TPMA_SESSION;
+typedef UINT8 TPMA_SESSION;
 
 #endif
 
@@ -637,33 +626,33 @@ typedef uint32_t	TPMA_SESSION;
 
 typedef union {
 	struct {
-	unsigned int TPM_LOC_ZERO : 1;	/*   */
-	unsigned int TPM_LOC_ONE : 1;	/*   */
-	unsigned int TPM_LOC_TWO : 1;	/*   */
-	unsigned int TPM_LOC_THREE : 1;	/*   */
-	unsigned int TPM_LOC_FOUR : 1;	/*   */
-	unsigned int Extended : 3;	/* If any of these bits is set an extended locality is indicated  */
+	unsigned char TPM_LOC_ZERO : 1;	/*   */
+	unsigned char TPM_LOC_ONE : 1;	/*   */
+	unsigned char TPM_LOC_TWO : 1;	/*   */
+	unsigned char TPM_LOC_THREE : 1;	/*   */
+	unsigned char TPM_LOC_FOUR : 1;	/*   */
+	unsigned char Extended : 3;	/* If any of these bits is set an extended locality is indicated  */
 	};
-	UINT32 val;
+	UINT8 val;
 } TPMA_LOCALITY;
 
 #elif defined TPM_BITFIELD_BE
 
 typedef union {
 	struct {
-	unsigned int Extended : 3;	/* If any of these bits is set an extended locality is indicated  */
-	unsigned int TPM_LOC_FOUR : 1;	/*   */
-	unsigned int TPM_LOC_THREE : 1;	/*   */
-	unsigned int TPM_LOC_TWO : 1;	/*   */
-	unsigned int TPM_LOC_ONE : 1;	/*   */
-	unsigned int TPM_LOC_ZERO : 1;	/*   */
+	unsigned char Extended : 3;	/* If any of these bits is set an extended locality is indicated  */
+	unsigned char TPM_LOC_FOUR : 1;	/*   */
+	unsigned char TPM_LOC_THREE : 1;	/*   */
+	unsigned char TPM_LOC_TWO : 1;	/*   */
+	unsigned char TPM_LOC_ONE : 1;	/*   */
+	unsigned char TPM_LOC_ZERO : 1;	/*   */
 	};
-	UINT32 val;
+	UINT8 val;
 } TPMA_LOCALITY;
 
 #else
 
-typedef uint32_t	TPMA_LOCALITY;
+typedef UINT8 TPMA_LOCALITY;
 
 #endif
 
@@ -987,24 +976,12 @@ typedef	struct {
 
 /* Table 70  Definition of TPMU_HA Union <INOUT S> */
 typedef	union {
-#ifdef TPM_ALG_SHA
-	BYTE	sha[SHA_DIGEST_SIZE];	 /* all hashes  */
-#endif
-#ifdef TPM_ALG_SHA1
 	BYTE	sha1[SHA1_DIGEST_SIZE];	 /* all hashes  */
-#endif
-#ifdef TPM_ALG_SHA256
 	BYTE	sha256[SHA256_DIGEST_SIZE];	 /* all hashes  */
-#endif
-#ifdef TPM_ALG_SHA384
 	BYTE	sha384[SHA384_DIGEST_SIZE];	 /* all hashes  */
-#endif
-#ifdef TPM_ALG_SHA512
 	BYTE	sha512[SHA512_DIGEST_SIZE];	 /* all hashes  */
-#endif
-#ifdef TPM_ALG_SM3_256
 	BYTE	sm3_256[SM3_256_DIGEST_SIZE];	 /* all hashes  */
-#endif
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_HA;
 
 /* Table 71  Definition of TPMT_HA Structure <INOUT> */
@@ -1047,6 +1024,7 @@ TPM2B_TYPE1( IV, MAX_SYM_BLOCK_SIZE, buffer );
 typedef	union {
 	TPMT_HA	digest;	 /* when the Name is a digest  */
 	TPM_HANDLE	handle;	 /* when the Name is a handle  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_NAME;
 
 /* Table 83  Definition of TPM2B_NAME Structure */
@@ -1192,6 +1170,7 @@ typedef	union {
 	TPML_TAGGED_TPM_PROPERTY	tpmProperties;	 /*   */
 	TPML_TAGGED_PCR_PROPERTY	pcrProperties;	 /*   */
 	TPML_ECC_CURVE	eccCurves;	 /* TPM_ALG_ECC  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_CAPABILITIES;
 
 /* Table 108  Definition of TPMS_CAPABILITY_DATA Structure <OUT> */
@@ -1271,6 +1250,7 @@ typedef	union {
 	TPMS_SESSION_AUDIT_INFO	sessionAudit;	 /*  */
 	TPMS_TIME_ATTEST_INFO	time;	 /*  */
 	TPMS_NV_CERTIFY_INFO	nv;	 /*  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_ATTEST;
 
 /* Table 120  Definition of TPMS_ATTEST Structure <OUT> */
@@ -1313,31 +1293,21 @@ typedef	TPM_KEY_BITS TPMI_CAMELLIA_KEY_BITS;
 
 /* Table 125  Definition of TPMU_SYM_KEY_BITS Union */
 typedef	union {
-#ifdef TPM_ALG_AES
 	TPMI_AES_KEY_BITS	aes;	 /* all symmetric algorithms  */
-#endif
-#ifdef TPM_ALG_SM4
 	TPMI_SM4_KEY_BITS	sm4;	 /* all symmetric algorithms  */
-#endif
-#ifdef TPM_ALG_CAMELLIA
 	TPMI_CAMELLIA_KEY_BITS	camellia;	 /* all symmetric algorithms  */
-#endif
 	TPM_KEY_BITS	sym;	 /* when selector may be any of the symmetric block ciphers  */
 	TPMI_ALG_HASH	exclusiveOr;	 /* overload for using xorNOTE	TPM_ALG_NULL is not allowed  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_SYM_KEY_BITS;
 
 /* Table 126  Definition of TPMU_SYM_MODE Union */
 typedef	union {
-#ifdef TPM_ALG_AES
 	TPMI_ALG_SYM_MODE	aes;	 /*   */
-#endif
-#ifdef TPM_ALG_SM4
 	TPMI_ALG_SYM_MODE	sm4;	 /*   */
-#endif
-#ifdef TPM_ALG_CAMELLIA
 	TPMI_ALG_SYM_MODE	camellia;	 /*   */
-#endif
 	TPMI_ALG_SYM_MODE	sym;	 /* when selector may be any of the symmetric block ciphers  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_SYM_MODE;
 
 /* Table 128  Definition of TPMT_SYM_DEF Structure */
@@ -1401,6 +1371,7 @@ typedef	struct {
 typedef	union {
 	TPMS_SCHEME_HMAC	hmac;	 /* the signing scheme  */
 	TPMS_SCHEME_XOR	exclusiveOr;	 /* the obfuscation scheme  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_SCHEME_KEYEDHASH;
 
 /* Table 141  Definition of TPMT_KEYEDHASH_SCHEME Structure */
@@ -1421,26 +1392,15 @@ typedef	TPMS_SCHEME_ECDAA	TPMS_SIG_SCHEME_ECDAA;	 /* schemes that need a hash an
 
 /* Table 144  Definition of TPMU_SIG_SCHEME Union <INOUT S> */
 typedef	union {
-#ifdef TPM_ALG_RSASSA
 	TPMS_SIG_SCHEME_RSASSA	rsassa;	 /* all signing schemes including anonymous schemes  */
-#endif
-#ifdef TPM_ALG_RSAPSS
 	TPMS_SIG_SCHEME_RSAPSS	rsapss;	 /* all signing schemes including anonymous schemes  */
-#endif
-#ifdef TPM_ALG_ECDSA
 	TPMS_SIG_SCHEME_ECDSA	ecdsa;	 /* all signing schemes including anonymous schemes  */
-#endif
-#ifdef TPM_ALG_ECDAA
 	TPMS_SIG_SCHEME_ECDAA	ecdaa;	 /* all signing schemes including anonymous schemes  */
-#endif
-#ifdef TPM_ALG_SM2
 	TPMS_SIG_SCHEME_SM2	sm2;	 /* all signing schemes including anonymous schemes  */
-#endif
-#ifdef TPM_ALG_ECSCHNORR
 	TPMS_SIG_SCHEME_ECSCHNORR	ecschnorr;	 /* all signing schemes including anonymous schemes  */
-#endif
 	TPMS_SCHEME_HMAC	hmac;	 /* the HMAC scheme  */
 	TPMS_SCHEME_HASH	any;	 /* selector that allows access to digest for any signing scheme  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_SIG_SCHEME;
 
 /* Table 145  Definition of TPMT_SIG_SCHEME Structure */
@@ -1465,18 +1425,11 @@ typedef	TPMS_SCHEME_HASH	TPMS_SCHEME_KDF1_SP800_108;	 /* hashbased key or maskge
 
 /* Table 149  Definition of TPMU_KDF_SCHEME Union <INOUT S> */
 typedef	union {
-#ifdef TPM_ALG_MGF1
 	TPMS_SCHEME_MGF1	mgf1;	 /*   */
-#endif
-#ifdef TPM_ALG_KDF1_SP800_56A
 	TPMS_SCHEME_KDF1_SP800_56A	kdf1_sp800_56a;	 /*   */
-#endif
-#ifdef TPM_ALG_KDF2
 	TPMS_SCHEME_KDF2	kdf2;	 /*   */
-#endif
-#ifdef TPM_ALG_KDF1_SP800_108
 	TPMS_SCHEME_KDF1_SP800_108	kdf1_sp800_108;	 /*   */
-#endif
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_KDF_SCHEME;
 
 /* Table 150  Definition of TPMT_KDF_SCHEME Structure */
@@ -1490,37 +1443,18 @@ typedef	TPM_ALG_ID TPMI_ALG_ASYM_SCHEME;
 
 /* Table 152  Definition of TPMU_ASYM_SCHEME Union */
 typedef	union {
-#ifdef TPM_ALG_ECDH
 	TPMS_KEY_SCHEME_ECDH	ecdh;	 /*   */
-#endif
-#ifdef TPM_ALG_ECMQV
 	TPMS_KEY_SCHEME_ECMQV	ecmqv;	 /*   */
-#endif
-#ifdef TPM_ALG_RSASSA
 	TPMS_SIG_SCHEME_RSASSA	rsassa;	 /* signing and anonymous signing  */
-#endif
-#ifdef TPM_ALG_RSAPSS
 	TPMS_SIG_SCHEME_RSAPSS	rsapss;	 /* signing and anonymous signing  */
-#endif
-#ifdef TPM_ALG_ECDSA
 	TPMS_SIG_SCHEME_ECDSA	ecdsa;	 /* signing and anonymous signing  */
-#endif
-#ifdef TPM_ALG_ECDAA
 	TPMS_SIG_SCHEME_ECDAA	ecdaa;	 /* signing and anonymous signing  */
-#endif
-#ifdef TPM_ALG_SM2
 	TPMS_SIG_SCHEME_SM2	sm2;	 /* signing and anonymous signing  */
-#endif
-#ifdef TPM_ALG_ECSCHNORR
 	TPMS_SIG_SCHEME_ECSCHNORR	ecschnorr;	 /* signing and anonymous signing  */
-#endif
-#ifdef TPM_ALG_RSAES
 	TPMS_ENC_SCHEME_RSAES	rsaes;	 /* schemes with no hash  */
-#endif
-#ifdef TPM_ALG_OAEP
 	TPMS_ENC_SCHEME_OAEP	oaep;	 /* schemes with no hash  */
-#endif
 	TPMS_SCHEME_HASH	anySig;	 /*   */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_ASYM_SCHEME;
 
 /* Table 153  Definition of TPMT_ASYM_SCHEME Structure <> */
@@ -1620,26 +1554,15 @@ typedef	TPMS_SIGNATURE_ECC	TPMS_SIGNATURE_ECSCHNORR;	 /*   */
 
 /* Table 172  Definition of TPMU_SIGNATURE Union <INOUT S> */
 typedef	union {
-#ifdef TPM_ALG_RSASSA
 	TPMS_SIGNATURE_RSASSA	rsassa;	 /* all asymmetric signatures  */
-#endif
-#ifdef TPM_ALG_RSAPSS
 	TPMS_SIGNATURE_RSAPSS	rsapss;	 /* all asymmetric signatures  */
-#endif
-#ifdef TPM_ALG_ECDSA
 	TPMS_SIGNATURE_ECDSA	ecdsa;	 /* all asymmetric signatures  */
-#endif
-#ifdef TPM_ALG_ECDAA
 	TPMS_SIGNATURE_ECDAA	ecdaa;	 /* all asymmetric signatures  */
-#endif
-#ifdef TPM_ALG_SM2
 	TPMS_SIGNATURE_SM2	sm2;	 /* all asymmetric signatures  */
-#endif
-#ifdef TPM_ALG_ECSCHNORR
 	TPMS_SIGNATURE_ECSCHNORR	ecschnorr;	 /* all asymmetric signatures  */
-#endif
 	TPMT_HA	hmac;	 /* HMAC signature required to be supported  */
 	TPMS_SCHEME_HASH	any;	 /* used to access the hash  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_SIGNATURE;
 
 /* Table 173  Definition of TPMT_SIGNATURE Structure */
@@ -1654,6 +1577,7 @@ typedef	union {
 	BYTE	rsa[MAX_RSA_KEY_BYTES];	 /*   */
 	BYTE	symmetric[sizeof(TPM2B_DIGEST)];	 /*   */
 	BYTE	keyedHash[sizeof(TPM2B_DIGEST)];	 /* Any symmetrically encrypted secret value will be limited to be no larger than a digest.  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_ENCRYPTED_SECRET;
 
 /* Table 175  Definition of TPM2B_ENCRYPTED_SECRET Structure */
@@ -1668,6 +1592,7 @@ typedef	union {
 	TPM2B_DIGEST	sym;	 /*   */
 	TPM2B_PUBLIC_KEY_RSA	rsa;	 /*   */
 	TPMS_ECC_POINT	ecc;	 /*   */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_PUBLIC_ID;
 
 /* Table 178  Definition of TPMS_KEYEDHASH_PARMS Structure */
@@ -1704,6 +1629,7 @@ typedef	union {
 	TPMS_RSA_PARMS	rsaDetail;	 /* decrypt + sign2  */
 	TPMS_ECC_PARMS	eccDetail;	 /* decrypt + sign2  */
 	TPMS_ASYM_PARMS	asymDetail;	 /* common scheme structure for RSA and ECC keys  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_PUBLIC_PARMS;
 
 /* Table 183  Definition of TPMT_PUBLIC_PARMS Structure */
@@ -1735,6 +1661,7 @@ typedef	union {
 	TPM2B_SENSITIVE_DATA	bits;	 /* the private data  */
 	TPM2B_SYM_KEY	sym;	 /* the symmetric key  */
 	TPM2B_PRIVATE_VENDOR_SPECIFIC	any;	 /* vendorspecific size for key storage  */
+	char na;        /* Not used. Common TPMU member only for parsing */
 } TPMU_SENSITIVE_COMPOSITE;
 
 /* Table 188  Definition of TPMT_SENSITIVE Structure */
